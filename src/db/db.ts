@@ -46,5 +46,7 @@ export default class Database<T extends { id: string | number }> {
     return updatedItem;
   }
 
-  deleteOne(id: string) {}
+  deleteOne(id: string | number) {
+    this.store = this.store.filter((item) => item.id !== id);
+  }
 }

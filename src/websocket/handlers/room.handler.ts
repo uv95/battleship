@@ -15,9 +15,15 @@ export function handleRooms(
       if (id && player) {
         const { players } = db.findById(id) as Room;
         const isPlayerInTheRoom = players.some((p) => p.index === player.index);
+        const isRoomReadyForGame = !isPlayerInTheRoom && players.length;
 
         if (isPlayerInTheRoom) {
-          break;
+          return;
+        }
+        if (isRoomReadyForGame) {
+          db.deleteOne(id);
+
+          return [];
         }
 
         const updatedPlayes = [...players, player];

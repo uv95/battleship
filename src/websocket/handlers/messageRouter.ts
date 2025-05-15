@@ -25,8 +25,8 @@ function getMessages(
       const player = handlePlayers(players, data);
       socket.playerId = player.index;
 
-      messages.push(formMessage(type, player));
       messages.push(
+        formMessage(type, player),
         formMessage(WebsocketCommandType.UPDATE_ROOM, handleRooms(type, rooms))
       );
 
@@ -48,10 +48,32 @@ function getMessages(
         break;
       }
 
+      const roomId = data.indexRoom;
+      const room = rooms.findById(roomId);
+
+      if (!room) {
+        break;
+      }
+
+      const isPlayerInTheRoom = room.players.some(
+        (p) => p.index === socket.playerId
+      );
+      const isRoomReadyForGame =
+        rooms.findById(roomId)?.players.length && !isPlayerInTheRoom;
+
+      if (isRoomReadyForGame) {
+        messages.push(
+          formMessage(WebsocketCommandType.CREATE_GAME, {
+            idGame: roomId,
+            idPlayer: socket.playerId,
+          })
+        );
+      }
+
       messages.push(
         formMessage(
           WebsocketCommandType.UPDATE_ROOM,
-          handleRooms(type, rooms, data.indexRoom, {
+          handleRooms(type, rooms, roomId, {
             name: player.name,
             index: player.id,
           })
@@ -72,6 +94,6 @@ export function handleMessage(message: WebsocketMessage, socket: MyWebSocket) {
   const { type, data } = message;
 
   const messages = getMessages(type, data ? JSON.parse(data) : '', socket);
-  console.log(messages);
+  // console.log(messages);
   messages.forEach((message) => socket.send(message));
 }

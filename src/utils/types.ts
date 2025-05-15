@@ -29,6 +29,27 @@ export interface Room {
   players: RoomPlayer[];
 }
 
+export interface Game {
+  id: string | number;
+  playerIds: number[] | string[];
+}
+
+export interface PlayerShips {
+  gameId: string | number;
+  ships: Ship[];
+  player: string | number;
+}
+
+export interface Ship {
+  position: {
+    x: number;
+    y: number;
+  };
+  direction: Boolean;
+  length: number;
+  type: 'small' | 'medium' | 'large' | 'huge';
+}
+
 export interface MyWebSocket extends WebSocket {
   playerId: string | number;
 }
