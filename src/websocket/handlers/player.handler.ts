@@ -13,9 +13,9 @@ export function handlePlayers(db: Database<Player>, data: Omit<Player, 'id'>) {
   };
 
   try {
-    const newPlayer = db.create(data);
-    result.name = newPlayer.name;
-    result.index = newPlayer.id;
+    const player = db.findOne(data) || db.create(data);
+    result.name = player.name;
+    result.index = player.id;
   } catch (error) {
     result.error = true;
     result.errorText = error ? JSON.stringify(error) : '';
