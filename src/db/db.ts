@@ -1,6 +1,6 @@
 import { v4 as uuidV4 } from 'uuid';
 
-export default class Database<T extends { id: string }> {
+export default class Database<T extends { id: string | number }> {
   private store: T[];
 
   constructor() {
@@ -11,7 +11,7 @@ export default class Database<T extends { id: string }> {
     return this.store;
   }
 
-  findById(id: string) {
+  findById(id: string | number) {
     return this.store.find((item) => item.id === id);
   }
 
@@ -26,8 +26,8 @@ export default class Database<T extends { id: string }> {
   create(data: Omit<T, 'id'>) {
     const id = uuidV4();
     const newItem = {
-      id,
       ...data,
+      id,
     } as T;
 
     this.store.push(newItem);
@@ -35,7 +35,16 @@ export default class Database<T extends { id: string }> {
     return newItem;
   }
 
-  updateOne(id: string) {}
+  updateOne(id: string | number, newData: Partial<T>) {
+    const itemToUpdate = this.findById(id);
+    const updatedItem = { ...itemToUpdate, ...newData } as T;
+
+    this.store = this.store.map((item) =>
+      item.id === id ? updatedItem : item
+    );
+
+    return updatedItem;
+  }
 
   deleteOne(id: string) {}
 }

@@ -1,8 +1,7 @@
-// TODO:  Инициализация Websocket сервера (например, Socket.IO или ws)
-// TODO:  Подключение обработчиков сообщений из src/websocket/handlers
-// TODO:  Обработка подключения/отключения клиентов
 import { styleText } from 'node:util';
 import { WebSocketServer } from 'ws';
+import { handleMessage } from './handlers/messageRouter';
+import { WebsocketMessage } from '../utils/types';
 
 export function runWebsocket() {
   const server = new WebSocketServer({
@@ -12,9 +11,10 @@ export function runWebsocket() {
   server.on('connection', (socket) => {
     console.log(styleText(['cyan'], 'Client connected'));
 
-    socket.on('message', (message) => {
-      console.log(styleText(['yellow'], `Received: ${message}`));
-      socket.send(`Server: ${message}`);
+    socket.on('message', (rawMessage) => {
+      const message = JSON.parse(rawMessage.toString());
+      console.log(styleText(['yellow'], `Received: ${rawMessage}`));
+      handleMessage(message as WebsocketMessage, socket as any);
     });
 
     socket.on('close', () => {

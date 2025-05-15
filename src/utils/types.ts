@@ -14,9 +14,23 @@ export enum WebsocketCommandType {
 }
 
 export interface Player {
-  id: string;
+  id: number | string;
   name: string;
   password: string;
+}
+
+export interface RoomPlayer {
+  name: string;
+  index: number | string;
+}
+
+export interface Room {
+  id: string | number;
+  players: RoomPlayer[];
+}
+
+export interface MyWebSocket extends WebSocket {
+  playerId: string | number;
 }
 
 export interface WebsocketMessage {
