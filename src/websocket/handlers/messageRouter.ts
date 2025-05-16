@@ -1,5 +1,7 @@
 import Database from '../../db/db';
+import { commandsForAllClients } from '../../utils/consts';
 import { formMessage } from '../../utils/formMessage';
+import { isRoomReadyForGame } from '../../utils/isRoomReadyForGame';
 import {
   MyWebSocket,
   Player,
@@ -55,13 +57,7 @@ function getMessages(
         break;
       }
 
-      const isPlayerInTheRoom = room.players.some(
-        (p) => p.index === socket.playerId
-      );
-      const isRoomReadyForGame =
-        rooms.findById(roomId)?.players.length && !isPlayerInTheRoom;
-
-      if (isRoomReadyForGame) {
+      if (isRoomReadyForGame(room.players, socket.playerId)) {
         messages.push(
           formMessage(WebsocketCommandType.CREATE_GAME, {
             idGame: roomId,
@@ -90,10 +86,32 @@ function getMessages(
   return messages;
 }
 
-export function handleMessage(message: WebsocketMessage, socket: MyWebSocket) {
+export function handleMessage({
+  message,
+  client,
+  allClients,
+}: {
+  message: WebsocketMessage;
+  client: MyWebSocket | WebSocket;
+  allClients: WebSocket[] | MyWebSocket[];
+}) {
   const { type, data } = message;
 
-  const messages = getMessages(type, data ? JSON.parse(data) : '', socket);
+  const messages = getMessages(
+    type,
+    data ? JSON.parse(data) : '',
+    client as MyWebSocket
+  );
   // console.log(messages);
-  messages.forEach((message) => socket.send(message));
+  messages.forEach((message) => {
+    const msgString = JSON.stringify(message);
+
+    if (commandsForAllClients.includes(message.type)) {
+      allClients.forEach((client) => client.send(msgString));
+
+      return;
+    }
+
+    client.send(msgString);
+  });
 }

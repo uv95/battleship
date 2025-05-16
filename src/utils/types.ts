@@ -29,11 +29,6 @@ export interface Room {
   players: RoomPlayer[];
 }
 
-export interface Game {
-  id: string | number;
-  playerIds: number[] | string[];
-}
-
 export interface PlayerShips {
   gameId: string | number;
   ships: Ship[];
@@ -47,7 +42,21 @@ export interface Ship {
   };
   direction: Boolean;
   length: number;
-  type: 'small' | 'medium' | 'large' | 'huge';
+  type: ShipType;
+}
+
+enum ShipType {
+  SMALL = 'small',
+  MEDIUM = 'medium',
+  LARGE = 'large',
+  HUGE = 'huge',
+}
+
+export interface ShipCellNumber {
+  [ShipType.SMALL]: 1;
+  [ShipType.MEDIUM]: 2;
+  [ShipType.LARGE]: 3;
+  [ShipType.HUGE]: 4;
 }
 
 export interface MyWebSocket extends WebSocket {
