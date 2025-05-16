@@ -5,6 +5,7 @@ import { isRoomReadyForGame } from '../../utils/isRoomReadyForGame';
 import {
   MyWebSocket,
   Player,
+  Game,
   Room,
   WebsocketCommandType,
   WebsocketMessage,
@@ -14,6 +15,7 @@ import { handleRooms } from './room.handler';
 
 const players = new Database<Player>();
 const rooms = new Database<Room>();
+const game = new Database<Game>();
 
 function getMessages(
   type: WebsocketCommandType,
@@ -79,6 +81,9 @@ function getMessages(
       break;
     }
 
+    case WebsocketCommandType.ADD_SHIPS: {
+    }
+
     default:
       break;
   }
@@ -87,31 +92,42 @@ function getMessages(
 }
 
 export function handleMessage({
-  message,
+  incomingMessage,
   client,
   allClients,
 }: {
-  message: WebsocketMessage;
+  incomingMessage: WebsocketMessage;
   client: MyWebSocket | WebSocket;
   allClients: WebSocket[] | MyWebSocket[];
 }) {
-  const { type, data } = message;
+  const { type, data } = incomingMessage;
 
+  // console.log(messages);
   const messages = getMessages(
     type,
     data ? JSON.parse(data) : '',
     client as MyWebSocket
   );
-  // console.log(messages);
-  messages.forEach((message) => {
-    const msgString = JSON.stringify(message);
 
+  messages.forEach((message) => {
     if (commandsForAllClients.includes(message.type)) {
-      allClients.forEach((client) => client.send(msgString));
+      allClients.forEach((client) => {
+        if (message.type === WebsocketCommandType.CREATE_GAME) {
+          const data = JSON.parse(message.data);
+
+          message.data = JSON.stringify({
+            ...data,
+            idPlayer: (client as MyWebSocket).playerId,
+          });
+        }
+
+        client.hasOwnProperty('playerId') &&
+          client.send(JSON.stringify(message));
+      });
 
       return;
     }
 
-    client.send(msgString);
+    client.send(JSON.stringify(message));
   });
 }

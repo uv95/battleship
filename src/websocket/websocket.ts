@@ -15,11 +15,11 @@ export function runWebsocket() {
     console.log(styleText(['cyan'], 'Client connected'));
 
     socket.on('message', (rawMessage) => {
-      const message = JSON.parse(rawMessage.toString());
+      const incomingMessage = JSON.parse(rawMessage.toString());
       console.log(styleText(['yellow'], `Received: ${rawMessage}`));
 
       handleMessage({
-        message,
+        incomingMessage,
         client: socket as any,
         allClients: connectedClients,
       });
