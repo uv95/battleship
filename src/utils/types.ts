@@ -29,10 +29,12 @@ export interface Room {
   players: RoomPlayer[];
 }
 
-export interface PlayerShips {
-  gameId: string | number;
-  ships: Ship[];
-  player: string | number;
+export interface Game {
+  id: string | number;
+  players: {
+    playerId: string | number;
+    ships: Ship[];
+  }[];
 }
 
 export interface Ship {

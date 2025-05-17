@@ -9,7 +9,9 @@ import {
   Room,
   WebsocketCommandType,
   WebsocketMessage,
+  RoomPlayer,
 } from '../../utils/types';
+import { handleGame } from './game.handler';
 import { handlePlayers } from './player.handler';
 import { handleRooms } from './room.handler';
 
@@ -60,9 +62,17 @@ function getMessages(
       }
 
       if (isRoomReadyForGame(room.players, socket.playerId)) {
+        const allPlayerIds = [room.players[0].index, socket.playerId];
+        const newGame = game.create({
+          players: allPlayerIds.map((playerId: string | number) => ({
+            playerId,
+            ships: [],
+          })),
+        });
+
         messages.push(
           formMessage(WebsocketCommandType.CREATE_GAME, {
-            idGame: roomId,
+            idGame: newGame.id,
             idPlayer: socket.playerId,
           })
         );
@@ -82,6 +92,7 @@ function getMessages(
     }
 
     case WebsocketCommandType.ADD_SHIPS: {
+      handleGame(type, game, data);
     }
 
     default:
