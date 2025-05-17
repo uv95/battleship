@@ -1,5 +1,5 @@
 import Database from '../../db/db';
-import { Game, RoomPlayer, WebsocketCommandType } from '../../utils/types';
+import { Game, WebsocketCommandType } from '../../utils/types';
 
 export function handleGame(
   type: WebsocketCommandType,
@@ -10,22 +10,25 @@ export function handleGame(
     case WebsocketCommandType.ADD_SHIPS: {
       const game = db.findById(data.gameId);
 
-      if (game) {
-        db.updateOne(game.id, {
-          players: game.players.map((player) => {
-            if (player.playerId === data.indexPlayer) {
-              return {
-                ...player,
-                ships: data.ships,
-              };
-            }
-
-            return player;
-          }),
-        });
+      if (!game) {
+        break;
       }
 
-      break;
+      const updatedGame = db.updateOne(game.id, {
+        players: game.players.map((player) => {
+          if (player.playerId === data.indexPlayer) {
+            return {
+              ...player,
+              ships: data.ships,
+            };
+          }
+
+          return player;
+        }),
+        firstPlayerId: game.firstPlayerId || data.indexPlayer,
+      });
+
+      return updatedGame;
     }
 
     default:

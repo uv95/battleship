@@ -10,6 +10,7 @@ import {
   WebsocketCommandType,
   WebsocketMessage,
   RoomPlayer,
+  Ship,
 } from '../../utils/types';
 import { handleGame } from './game.handler';
 import { handlePlayers } from './player.handler';
@@ -68,13 +69,17 @@ function getMessages(
             playerId,
             ships: [],
           })),
+          firstPlayerId: '',
         });
 
         messages.push(
-          formMessage(WebsocketCommandType.CREATE_GAME, {
-            idGame: newGame.id,
-            idPlayer: socket.playerId,
-          })
+          formMessage(
+            WebsocketCommandType.CREATE_GAME,
+            allPlayerIds.map((playerId) => ({
+              idGame: newGame.id,
+              idPlayer: playerId,
+            }))
+          )
         );
       }
 
@@ -92,7 +97,19 @@ function getMessages(
     }
 
     case WebsocketCommandType.ADD_SHIPS: {
-      handleGame(type, game, data);
+      const updatedGame = handleGame(type, game, data);
+
+      if (updatedGame) {
+        const allPlayersAddedShips = updatedGame.players.every(
+          (player) => player.ships.length
+        );
+
+        if (allPlayersAddedShips) {
+          messages.push(
+            formMessage(WebsocketCommandType.START_GAME, updatedGame)
+          );
+        }
+      }
     }
 
     default:
@@ -122,13 +139,27 @@ export function handleMessage({
 
   messages.forEach((message) => {
     if (commandsForAllClients.includes(message.type)) {
+      const data = JSON.parse(message.data);
+
       allClients.forEach((client) => {
         if (message.type === WebsocketCommandType.CREATE_GAME) {
-          const data = JSON.parse(message.data);
+          message.data = JSON.stringify(
+            data.find(
+              (playerData: {
+                idGame: string | number;
+                idPlayer: string | number;
+              }) => playerData.idPlayer === (client as MyWebSocket).playerId
+            )
+          );
+        }
 
+        if (message.type === WebsocketCommandType.START_GAME) {
           message.data = JSON.stringify({
-            ...data,
-            idPlayer: (client as MyWebSocket).playerId,
+            ships: data.players.find(
+              ({ playerId }: { playerId: string | number }) =>
+                playerId === (client as MyWebSocket).playerId
+            ).ships,
+            currentPlayerIndex: data.firstPlayerId,
           });
         }
 

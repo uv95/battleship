@@ -35,6 +35,7 @@ export interface Game {
     playerId: string | number;
     ships: Ship[];
   }[];
+  firstPlayerId: string | number;
 }
 
 export interface Ship {
