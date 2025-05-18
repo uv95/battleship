@@ -15,128 +15,127 @@ export function handleGame(
   db: Database<Game>,
   data: any
 ) {
-  switch (type) {
-    case WebsocketCommandType.ADD_SHIPS: {
-      const game = db.findById(data.gameId);
+  if (type === WebsocketCommandType.ADD_SHIPS) {
+    const game = db.findById(data.gameId);
 
-      if (!game) {
-        return;
-      }
-
-      const updatedGame = db.updateOne(game.id, {
-        players: game.players.map((player) => {
-          if (player.playerId === data.indexPlayer) {
-            return {
-              ...player,
-              ships: data.ships.map((ship: Omit<Ship, 'life'>) => ({
-                ...ship,
-                cells: getShipCells(ship.position, ship.length, ship.direction),
-              })),
-            };
-          }
-
-          return player;
-        }),
-        firstPlayerId: game.firstPlayerId || data.indexPlayer,
-      });
-
-      return updatedGame;
+    if (!game) {
+      return;
     }
 
-    case WebsocketCommandType.ATTACK: {
-      const game = db.findById(data.gameId);
+    const updatedGame = db.updateOne(game.id, {
+      players: game.players.map((player) => {
+        if (player.playerId === data.indexPlayer) {
+          return {
+            ...player,
+            ships: data.ships.map((ship: Omit<Ship, 'life'>) => ({
+              ...ship,
+              cells: getShipCells(ship.position, ship.length, ship.direction),
+            })),
+          };
+        }
 
-      if (!game) {
-        return;
-      }
+        return player;
+      }),
+      firstPlayerId: game.firstPlayerId || data.indexPlayer,
+    });
 
-      const { x, y, indexPlayer } = data;
-      const result: {
-        position: Position;
-        currentPlayer: string | number;
-        status: AttackStatus;
-      } = {
-        position: {
-          x,
-          y,
-        },
-        currentPlayer: indexPlayer,
-        status: AttackStatus.MISS,
-      };
-      let messagesForKilledShip: (typeof result)[] = [];
+    return updatedGame;
+  }
 
-      const enemy = game.players.find(
-        (player) => player.playerId !== indexPlayer
-      );
+  if (
+    type === WebsocketCommandType.ATTACK ||
+    type === WebsocketCommandType.RANDOM_ATTACK
+  ) {
+    const game = db.findById(data.gameId);
 
-      if (!enemy || indexPlayer !== game.firstPlayerId) {
-        return;
-      }
+    if (!game) {
+      return;
+    }
 
-      const updatedEnemyShips = enemy.ships
-        .map((ship: Ship) => {
-          const shotCell = ship.cells.find(
-            (cell: Cell) => cell.x === x && cell.y === y && !cell.isShot
-          );
+    const { x, y, indexPlayer } = data;
+    const result: {
+      position: Position;
+      currentPlayer: string | number;
+      status: AttackStatus;
+    } = {
+      position: {
+        x,
+        y,
+      },
+      currentPlayer: indexPlayer,
+      status: AttackStatus.MISS,
+    };
+    let messagesForKilledShip: (typeof result)[] = [];
 
-          if (!shotCell) {
-            return ship;
-          }
+    const enemy = game.players.find(
+      (player) => player.playerId !== indexPlayer
+    );
 
-          shotCell.isShot = true;
-          const isShipKilled = ship.cells.every((cell: Cell) => cell.isShot);
+    if (!enemy || indexPlayer !== game.firstPlayerId) {
+      return;
+    }
 
-          if (isShipKilled) {
-            ship.cells.forEach((cell: Cell) => {
-              messagesForKilledShip.push({
-                ...result,
-                position: {
-                  x: cell.x,
-                  y: cell.y,
-                },
-                status: AttackStatus.KILLED,
-              });
-            });
+    const updatedEnemyShips = enemy.ships
+      .map((ship: Ship) => {
+        const shotCell = ship.cells.find(
+          (cell: Cell) => cell.x === x && cell.y === y && !cell.isShot
+        );
 
-            result.status = AttackStatus.KILLED;
-
-            return null;
-          }
-
-          result.status = AttackStatus.SHOT;
-
+        if (!shotCell) {
           return ship;
-        })
-        .filter(Boolean) as Ship[];
+        }
 
-      const currentPlayer = game.players.find(
-        (player) => player.playerId === indexPlayer
-      )!;
+        shotCell.isShot = true;
+        const isShipKilled = ship.cells.every((cell: Cell) => cell.isShot);
 
-      const nextPlayerId =
-        result.status === AttackStatus.MISS
-          ? enemy.playerId
-          : game.firstPlayerId;
+        if (isShipKilled) {
+          ship.cells.forEach((cell: Cell) => {
+            messagesForKilledShip.push({
+              ...result,
+              position: {
+                x: cell.x,
+                y: cell.y,
+              },
+              status: AttackStatus.KILLED,
+            });
+          });
 
-      db.updateOne(game.id, {
-        firstPlayerId: nextPlayerId,
-        players: [
-          currentPlayer,
-          {
-            ...enemy,
-            ships: updatedEnemyShips,
-          },
-        ],
-      });
+          result.status = AttackStatus.KILLED;
 
-      if (result.status === AttackStatus.KILLED) {
-        return [...messagesForKilledShip, { currentPlayer: nextPlayerId }];
-      }
+          return null;
+        }
 
-      return [result, { currentPlayer: nextPlayerId }];
+        result.status = AttackStatus.SHOT;
+
+        return ship;
+      })
+      .filter(Boolean) as Ship[];
+
+    const currentPlayer = game.players.find(
+      (player) => player.playerId === indexPlayer
+    )!;
+
+    const nextPlayerId =
+      result.status === AttackStatus.MISS ? enemy.playerId : game.firstPlayerId;
+
+    db.updateOne(game.id, {
+      firstPlayerId: nextPlayerId,
+      players: [
+        currentPlayer,
+        {
+          ...enemy,
+          ships: updatedEnemyShips,
+        },
+      ],
+    });
+
+    if (!updatedEnemyShips.length) {
+      return [{ winPlayer: nextPlayerId }];
+    }
+    if (result.status === AttackStatus.KILLED) {
+      return [...messagesForKilledShip, { currentPlayer: nextPlayerId }];
     }
 
-    default:
-      break;
+    return [result, { currentPlayer: nextPlayerId }];
   }
 }

@@ -1,6 +1,7 @@
 import Database from '../../db/db';
 import { commandsForAllClients } from '../../utils/consts';
 import { formMessage } from '../../utils/formMessage';
+import { getRandomPosition } from '../../utils/getRandomPosition';
 import { isRoomReadyForGame } from '../../utils/isRoomReadyForGame';
 import {
   MyWebSocket,
@@ -9,7 +10,6 @@ import {
   Room,
   WebsocketCommandType,
   WebsocketMessage,
-  RoomPlayer,
   Ship,
 } from '../../utils/types';
 import { handleGame } from './game.handler';
@@ -121,6 +121,42 @@ function getMessages(
       const gameMessages = handleGame(type, game, data) as any;
 
       if (gameMessages) {
+        if (gameMessages.length === 1) {
+          messages.push(
+            formMessage(WebsocketCommandType.FINISH, gameMessages[0])
+          );
+          break;
+        }
+
+        const attackMessages = gameMessages
+          .slice(0, -1)
+          .map((msg: Object) => formMessage(WebsocketCommandType.ATTACK, msg));
+        const turnMessage = formMessage(
+          WebsocketCommandType.TURN,
+          gameMessages[gameMessages.length - 1]
+        );
+        messages.push(...attackMessages, turnMessage);
+      }
+
+      break;
+    }
+
+    case WebsocketCommandType.RANDOM_ATTACK: {
+      const dataWithRandomPosition = { ...data, ...getRandomPosition() };
+      const gameMessages = handleGame(
+        type,
+        game,
+        dataWithRandomPosition
+      ) as any;
+
+      if (gameMessages) {
+        if (gameMessages.length === 1) {
+          messages.push(
+            formMessage(WebsocketCommandType.FINISH, gameMessages[0])
+          );
+          break;
+        }
+
         const attackMessages = gameMessages
           .slice(0, -1)
           .map((msg: Object) => formMessage(WebsocketCommandType.ATTACK, msg));
