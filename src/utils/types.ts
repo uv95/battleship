@@ -31,35 +31,39 @@ export interface Room {
 
 export interface Game {
   id: string | number;
-  players: {
-    playerId: string | number;
-    ships: Ship[];
-  }[];
+  players: GamePlayer[];
   firstPlayerId: string | number;
 }
 
-export interface Ship {
-  position: {
-    x: number;
-    y: number;
-  };
-  direction: Boolean;
-  length: number;
-  type: ShipType;
+export interface GamePlayer {
+  playerId: string | number;
+  ships: Ship[];
 }
 
-enum ShipType {
+export interface Ship {
+  position: Position;
+  direction: Boolean; //true - vertical
+  length: number;
+  type: ShipType;
+  cells: Position[];
+}
+
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export enum ShipType {
   SMALL = 'small',
   MEDIUM = 'medium',
   LARGE = 'large',
   HUGE = 'huge',
 }
 
-export interface ShipCellNumber {
-  [ShipType.SMALL]: 1;
-  [ShipType.MEDIUM]: 2;
-  [ShipType.LARGE]: 3;
-  [ShipType.HUGE]: 4;
+export enum AttackStatus {
+  MISS = 'miss',
+  KILLED = 'killed',
+  SHOT = 'shot',
 }
 
 export interface MyWebSocket extends WebSocket {

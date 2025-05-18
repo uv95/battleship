@@ -1,4 +1,4 @@
-import { WebsocketCommandType } from './types';
+import { WebsocketCommandType, ShipType } from './types';
 
 export const commandsForAllClients = [
   WebsocketCommandType.UPDATE_ROOM,

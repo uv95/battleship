@@ -18,7 +18,7 @@ export function handleRooms(
         const isRoomReadyForGame = !isPlayerInTheRoom && players.length;
 
         if (isPlayerInTheRoom) {
-          return;
+          return getRooms();
         }
         if (isRoomReadyForGame) {
           db.deleteOne(id);

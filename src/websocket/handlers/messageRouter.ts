@@ -97,7 +97,7 @@ function getMessages(
     }
 
     case WebsocketCommandType.ADD_SHIPS: {
-      const updatedGame = handleGame(type, game, data);
+      const updatedGame = handleGame(type, game, data) as Game;
 
       if (updatedGame) {
         const allPlayersAddedShips = updatedGame.players.every(
@@ -106,10 +106,28 @@ function getMessages(
 
         if (allPlayersAddedShips) {
           messages.push(
-            formMessage(WebsocketCommandType.START_GAME, updatedGame)
+            formMessage(WebsocketCommandType.START_GAME, updatedGame),
+            formMessage(WebsocketCommandType.TURN, {
+              currentPlayer: updatedGame.firstPlayerId,
+            })
           );
         }
       }
+
+      break;
+    }
+
+    case WebsocketCommandType.ATTACK: {
+      const gameMessages = handleGame(type, game, data) as any;
+
+      if (gameMessages) {
+        messages.push(
+          formMessage(WebsocketCommandType.ATTACK, gameMessages[0]),
+          formMessage(WebsocketCommandType.TURN, gameMessages[1])
+        );
+      }
+
+      break;
     }
 
     default:
@@ -155,10 +173,17 @@ export function handleMessage({
 
         if (message.type === WebsocketCommandType.START_GAME) {
           message.data = JSON.stringify({
-            ships: data.players.find(
-              ({ playerId }: { playerId: string | number }) =>
-                playerId === (client as MyWebSocket).playerId
-            ).ships,
+            ships: data.players
+              .find(
+                ({ playerId }: { playerId: string | number }) =>
+                  playerId === (client as MyWebSocket).playerId
+              )
+              .ships.map((ship: Ship) => ({
+                position: ship.position,
+                direction: ship.direction,
+                length: ship.length,
+                type: ship.type,
+              })),
             currentPlayerIndex: data.firstPlayerId,
           });
         }
