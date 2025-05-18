@@ -45,12 +45,18 @@ export interface Ship {
   direction: Boolean; //true - vertical
   length: number;
   type: ShipType;
-  cells: Position[];
+  cells: Cell[];
 }
 
 export interface Position {
   x: number;
   y: number;
+}
+
+export interface Cell {
+  x: number;
+  y: number;
+  isShot: Boolean;
 }
 
 export enum ShipType {

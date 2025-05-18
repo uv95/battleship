@@ -4,7 +4,7 @@ import { getShipCells } from '../../utils/getShipCells';
 import {
   AttackStatus,
   Game,
-  GamePlayer,
+  Cell,
   Position,
   Ship,
   WebsocketCommandType,
@@ -63,6 +63,7 @@ export function handleGame(
         currentPlayer: indexPlayer,
         status: AttackStatus.MISS,
       };
+      let messagesForKilledShip: (typeof result)[] = [];
 
       const enemy = game.players.find(
         (player) => player.playerId !== indexPlayer
@@ -75,31 +76,36 @@ export function handleGame(
       const updatedEnemyShips = enemy.ships
         .map((ship: Ship) => {
           const shotCell = ship.cells.find(
-            (cell: Position) => cell.x === x && cell.y === y
+            (cell: Cell) => cell.x === x && cell.y === y && !cell.isShot
           );
 
           if (!shotCell) {
             return ship;
           }
 
-          if (shotCell && ship.length === 1) {
+          shotCell.isShot = true;
+          const isShipKilled = ship.cells.every((cell: Cell) => cell.isShot);
+
+          if (isShipKilled) {
+            ship.cells.forEach((cell: Cell) => {
+              messagesForKilledShip.push({
+                ...result,
+                position: {
+                  x: cell.x,
+                  y: cell.y,
+                },
+                status: AttackStatus.KILLED,
+              });
+            });
+
             result.status = AttackStatus.KILLED;
 
             return null;
           }
 
-          const updatedCells = ship.cells.filter(
-            (cell: Position) => !(cell.x === x && cell.y === y)
-          );
+          result.status = AttackStatus.SHOT;
 
-          result.status = updatedCells.length
-            ? AttackStatus.SHOT
-            : AttackStatus.KILLED;
-
-          return {
-            ...ship,
-            cells: updatedCells,
-          };
+          return ship;
         })
         .filter(Boolean) as Ship[];
 
@@ -122,6 +128,10 @@ export function handleGame(
           },
         ],
       });
+
+      if (result.status === AttackStatus.KILLED) {
+        return [...messagesForKilledShip, { currentPlayer: nextPlayerId }];
+      }
 
       return [result, { currentPlayer: nextPlayerId }];
     }

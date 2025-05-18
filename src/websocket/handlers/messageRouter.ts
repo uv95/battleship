@@ -121,10 +121,14 @@ function getMessages(
       const gameMessages = handleGame(type, game, data) as any;
 
       if (gameMessages) {
-        messages.push(
-          formMessage(WebsocketCommandType.ATTACK, gameMessages[0]),
-          formMessage(WebsocketCommandType.TURN, gameMessages[1])
+        const attackMessages = gameMessages
+          .slice(0, -1)
+          .map((msg: Object) => formMessage(WebsocketCommandType.ATTACK, msg));
+        const turnMessage = formMessage(
+          WebsocketCommandType.TURN,
+          gameMessages[gameMessages.length - 1]
         );
+        messages.push(...attackMessages, turnMessage);
       }
 
       break;
