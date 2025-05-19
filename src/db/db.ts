@@ -1,4 +1,4 @@
-import { v4 as uuidV4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 export default class Database<T extends { id: string | number }> {
   private store: T[];
@@ -24,7 +24,7 @@ export default class Database<T extends { id: string | number }> {
   }
 
   create(data: Omit<T, 'id'>) {
-    const id = uuidV4();
+    const id = randomUUID();
     const newItem = {
       ...data,
       id,

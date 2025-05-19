@@ -13,10 +13,7 @@ export function getRoomMessages({
   socket,
   data,
 }: {
-  type:
-    | WebsocketCommandType.REG
-    | WebsocketCommandType.ADD_USER_TO_ROOM
-    | WebsocketCommandType.CREATE_ROOM;
+  type: WebsocketCommandType;
   store: Store;
   socket?: MyWebSocket;
   data?: any;

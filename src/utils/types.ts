@@ -13,6 +13,7 @@ export enum WebsocketCommandType {
   RANDOM_ATTACK = 'randomAttack',
   TURN = 'turn',
   FINISH = 'finish',
+  SINGLE_PLAY = 'single_play',
 }
 
 export interface Player {

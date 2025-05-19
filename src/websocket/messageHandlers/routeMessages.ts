@@ -1,5 +1,11 @@
 import Database from '../../db/db';
-import { commandsForAllClients } from '../../utils/consts';
+import { getRandomShips } from '../../utils/getRandomShips';
+import {
+  BOT_NAME,
+  commandsForAllClients,
+  logMessage,
+} from '../../utils/consts';
+import { formMessage } from '../../utils/formMessage';
 import { getIndividualDataForAllPlayers } from '../../utils/getIndividualDataForAllPlayers';
 import { getRandomPosition } from '../../utils/getRandomPosition';
 import {
@@ -10,6 +16,7 @@ import {
   WebsocketCommandType,
   WebsocketMessage,
   Store,
+  Ship,
 } from '../../utils/types';
 import { getGameMessages } from './getGameMessages';
 import { getRegMessage } from './getRegMessage';
@@ -28,6 +35,7 @@ function getMessages(
   socket: MyWebSocket
 ) {
   const messages = [];
+  logMessage(type, JSON.stringify(data));
 
   switch (type) {
     case WebsocketCommandType.REG: {
@@ -81,7 +89,56 @@ function getMessages(
     }
 
     case WebsocketCommandType.ATTACK: {
-      const gameMessages = getGameMessages(type, store, data);
+      const gameMessages = getGameMessages(type, store, data, socket);
+
+      if (!gameMessages) {
+        break;
+      }
+
+      if (Array.isArray(gameMessages)) {
+        console.log('!!!!!!', gameMessages);
+        messages.push(...gameMessages);
+      } else {
+        messages.push(gameMessages);
+      }
+
+      const botId = store.players.findOne({ name: BOT_NAME })?.id;
+      const game = store.game.findById(data.gameId);
+      const isGameWithBot = game?.players.some(
+        ({ playerId }) => playerId === botId
+      );
+
+      if (isGameWithBot) {
+        const attackData = {
+          gameId: game?.id,
+          indexPlayer: botId,
+          ...getRandomPosition(),
+        };
+
+        const gameMessages = getGameMessages(type, store, attackData, socket);
+
+        if (!gameMessages) {
+          break;
+        }
+
+        if (Array.isArray(gameMessages)) {
+          messages.push(...gameMessages);
+        } else {
+          messages.push(gameMessages);
+        }
+      }
+
+      break;
+    }
+
+    case WebsocketCommandType.RANDOM_ATTACK: {
+      const dataWithRandomPosition = { ...data, ...getRandomPosition() };
+      const gameMessages = getGameMessages(
+        type,
+        store,
+        dataWithRandomPosition,
+        socket
+      ) as any;
 
       if (!gameMessages) {
         break;
@@ -96,23 +153,37 @@ function getMessages(
       break;
     }
 
-    case WebsocketCommandType.RANDOM_ATTACK: {
-      const dataWithRandomPosition = { ...data, ...getRandomPosition() };
-      const gameMessages = getGameMessages(
-        type,
-        store,
-        dataWithRandomPosition
-      ) as any;
+    case WebsocketCommandType.SINGLE_PLAY: {
+      const botData = {
+        name: BOT_NAME,
+        password: 'botbot',
+      } as Omit<Player, 'id'>;
 
-      if (!gameMessages) {
-        break;
-      }
+      const bot = store.players.create({ ...botData, wins: 0 });
+      const allPlayerIds = [socket.playerId, bot.id];
 
-      if (Array.isArray(gameMessages)) {
-        messages.push(...gameMessages);
-      } else {
-        messages.push(gameMessages);
-      }
+      const botShips = getRandomShips() as Ship[];
+      const newGame = store.game.create({
+        players: allPlayerIds.map((playerId: string | number) => ({
+          playerId,
+          ships: playerId === bot.id ? botShips : [],
+        })),
+        firstPlayerId: '',
+      });
+
+      const newGameData = [
+        {
+          idGame: newGame.id,
+          idPlayer: socket.playerId,
+        },
+      ];
+
+      const createGameMessage = formMessage(
+        WebsocketCommandType.CREATE_GAME,
+        newGameData
+      );
+
+      messages.push(createGameMessage);
 
       break;
     }
@@ -149,12 +220,24 @@ export function routeMessages({
 
       allClients.forEach((client) => {
         if (message.type === WebsocketCommandType.CREATE_GAME) {
+          const playerIds = data.map((playerData: any) => playerData.idPlayer);
+          if (!playerIds.includes((client as MyWebSocket).playerId)) {
+            return;
+          }
+
           message.data = JSON.stringify(
             createGameData(data, client as MyWebSocket)
           );
         }
 
         if (message.type === WebsocketCommandType.START_GAME) {
+          const playerIds = data.players.map(
+            (playerData: any) => playerData.playerId
+          );
+          if (!playerIds.includes((client as MyWebSocket).playerId)) {
+            return;
+          }
+
           message.data = JSON.stringify(
             startGameData(data, client as MyWebSocket)
           );

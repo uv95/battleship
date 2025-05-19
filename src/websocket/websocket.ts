@@ -12,11 +12,11 @@ export function runWebsocket() {
 
   server.on('connection', (socket) => {
     connectedClients.push(socket as any);
-    console.log(styleText(['cyan'], 'Client connected'));
+    console.log(styleText(['green'], 'Client connected'));
 
     socket.on('message', (rawMessage) => {
       const incomingMessage = JSON.parse(rawMessage.toString());
-      console.log(styleText(['yellow'], `Received: ${rawMessage}`));
+      // console.log(styleText(['yellow'], `Received: ${rawMessage}`));
 
       routeMessages({
         incomingMessage,
@@ -26,7 +26,13 @@ export function runWebsocket() {
     });
 
     socket.on('close', () => {
-      console.log(styleText(['cyan'], 'Client disconnected'));
+      console.log(styleText(['red'], 'Client disconnected'));
+    });
+
+    process.on('SIGINT', () => {
+      console.log(styleText(['bgRed'], 'Server closed'));
+      socket.close(1000, 'Websocket server closed');
+      process.exit();
     });
   });
 
