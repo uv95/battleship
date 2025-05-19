@@ -1,27 +1,19 @@
-import Database from '../../db/db';
 import { getShipCells } from '../../utils/getShipCells';
 import {
   AttackStatus,
-  Game,
   Cell,
   Ship,
   WebsocketCommandType,
   AttackResult,
   Store,
-  Player,
-  MyWebSocket,
 } from '../../utils/types';
 import { formMessage } from '../../utils/formMessage';
 import { getWinnerMessage } from './getWinnerMessage';
-import { BOT_NAME } from '../../utils/consts';
-import { getRandomPosition } from '../../utils/getRandomPosition';
-import { styleText } from 'util';
 
 export function getGameMessages(
   type: WebsocketCommandType,
   store: Store,
-  data: any,
-  socket?: MyWebSocket
+  data: any
 ) {
   const game = store.game.findById(data.gameId);
 
@@ -71,7 +63,6 @@ export function getGameMessages(
     type === WebsocketCommandType.RANDOM_ATTACK
   ) {
     const { x, y, indexPlayer } = data;
-    console.log('attack again..........');
     const result: AttackResult = {
       position: {
         x,
@@ -84,14 +75,6 @@ export function getGameMessages(
 
     const enemy = game.players.find(
       (player) => player.playerId !== indexPlayer
-    );
-
-    console.log(
-      styleText(['magenta'], `enemy is ${JSON.stringify(enemy?.playerId)}`)
-    );
-    console.log(styleText(['magenta'], `currentPlayer is ${indexPlayer}`));
-    console.log(
-      styleText(['magenta'], `game.firstPlayerId is ${game.firstPlayerId}`)
     );
 
     if (!enemy || indexPlayer !== game.firstPlayerId) {

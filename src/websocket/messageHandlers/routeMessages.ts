@@ -89,14 +89,13 @@ function getMessages(
     }
 
     case WebsocketCommandType.ATTACK: {
-      const gameMessages = getGameMessages(type, store, data, socket);
+      const gameMessages = getGameMessages(type, store, data);
 
       if (!gameMessages) {
         break;
       }
 
       if (Array.isArray(gameMessages)) {
-        console.log('!!!!!!', gameMessages);
         messages.push(...gameMessages);
       } else {
         messages.push(gameMessages);
@@ -108,14 +107,14 @@ function getMessages(
         ({ playerId }) => playerId === botId
       );
 
-      if (isGameWithBot) {
+      while (isGameWithBot && game?.firstPlayerId === botId) {
         const attackData = {
           gameId: game?.id,
           indexPlayer: botId,
           ...getRandomPosition(),
         };
 
-        const gameMessages = getGameMessages(type, store, attackData, socket);
+        const gameMessages = getGameMessages(type, store, attackData);
 
         if (!gameMessages) {
           break;
@@ -136,8 +135,7 @@ function getMessages(
       const gameMessages = getGameMessages(
         type,
         store,
-        dataWithRandomPosition,
-        socket
+        dataWithRandomPosition
       ) as any;
 
       if (!gameMessages) {
@@ -148,6 +146,32 @@ function getMessages(
         messages.push(...gameMessages);
       } else {
         messages.push(gameMessages);
+      }
+
+      const botId = store.players.findOne({ name: BOT_NAME })?.id;
+      const game = store.game.findById(data.gameId);
+      const isGameWithBot = game?.players.some(
+        ({ playerId }) => playerId === botId
+      );
+
+      while (isGameWithBot && game?.firstPlayerId === botId) {
+        const attackData = {
+          gameId: game?.id,
+          indexPlayer: botId,
+          ...getRandomPosition(),
+        };
+
+        const gameMessages = getGameMessages(type, store, attackData);
+
+        if (!gameMessages) {
+          break;
+        }
+
+        if (Array.isArray(gameMessages)) {
+          messages.push(...gameMessages);
+        } else {
+          messages.push(gameMessages);
+        }
       }
 
       break;
