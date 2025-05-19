@@ -7,22 +7,24 @@ import {
   Ship,
   WebsocketCommandType,
   AttackResult,
+  Store,
 } from '../../utils/types';
 import { formMessage } from '../../utils/formMessage';
+import { getWinnerMessage } from './getWinnerMessage';
 
 export function getGameMessages(
   type: WebsocketCommandType,
-  db: Database<Game>,
+  store: Store,
   data: any
 ) {
-  const game = db.findById(data.gameId);
+  const game = store.game.findById(data.gameId);
 
   if (!game) {
     return;
   }
 
   if (type === WebsocketCommandType.ADD_SHIPS) {
-    const updatedGame = db.updateOne(game.id, {
+    const updatedGame = store.game.updateOne(game.id, {
       players: game.players.map((player) => {
         if (player.playerId === data.indexPlayer) {
           return {
@@ -94,7 +96,7 @@ export function getGameMessages(
     const nextPlayerId =
       result.status === AttackStatus.MISS ? enemy.playerId : game.firstPlayerId;
 
-    db.updateOne(game.id, {
+    store.game.updateOne(game.id, {
       firstPlayerId: nextPlayerId,
       players: [
         currentPlayer,
@@ -106,9 +108,17 @@ export function getGameMessages(
     });
 
     if (!updatedEnemyShips.length) {
-      return formMessage(WebsocketCommandType.FINISH, {
+      const attackMessage = formMessage(WebsocketCommandType.ATTACK, result);
+      const finishMessage = formMessage(WebsocketCommandType.FINISH, {
         winPlayer: nextPlayerId,
       });
+      const winnersMessage = getWinnerMessage(
+        WebsocketCommandType.FINISH,
+        store.players,
+        { index: nextPlayerId }
+      );
+
+      return [attackMessage, finishMessage, winnersMessage];
     }
 
     const turnMessage = formMessage(WebsocketCommandType.TURN, {

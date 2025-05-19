@@ -19,6 +19,7 @@ export interface Player {
   id: number | string;
   name: string;
   password: string;
+  wins: number;
 }
 
 export interface RoomPlayer {
@@ -44,7 +45,7 @@ export interface GamePlayer {
 
 export interface Ship {
   position: Position;
-  direction: Boolean; //true - vertical
+  direction: Boolean;
   length: number;
   type: ShipType;
   cells: Cell[];

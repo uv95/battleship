@@ -9,12 +9,12 @@ import {
   Room,
   WebsocketCommandType,
   WebsocketMessage,
-  Ship,
   Store,
 } from '../../utils/types';
 import { getGameMessages } from './getGameMessages';
 import { getRegMessage } from './getRegMessage';
 import { getRoomMessages } from './getRoomMessages';
+import { getWinnerMessage } from './getWinnerMessage';
 
 const store: Store = {
   players: new Database<Player>(),
@@ -32,8 +32,21 @@ function getMessages(
   switch (type) {
     case WebsocketCommandType.REG: {
       const regMessage = getRegMessage(store.players, data, socket);
+      const regData = JSON.parse(regMessage.data);
+
+      if (regData.error) {
+        break;
+      }
+
+      const loggedUser = {
+        name: regData.name,
+        index: regData.index,
+      };
+
       const roomMessage = getRoomMessages({ type, store });
-      messages.push(regMessage, roomMessage);
+      const winnersMessage = getWinnerMessage(type, store.players, loggedUser);
+
+      messages.push(regMessage, roomMessage, winnersMessage);
 
       break;
     }
@@ -58,7 +71,7 @@ function getMessages(
     }
 
     case WebsocketCommandType.ADD_SHIPS: {
-      const gameMessages = getGameMessages(type, store.game, data);
+      const gameMessages = getGameMessages(type, store, data);
 
       if (Array.isArray(gameMessages)) {
         messages.push(...gameMessages);
@@ -68,7 +81,7 @@ function getMessages(
     }
 
     case WebsocketCommandType.ATTACK: {
-      const gameMessages = getGameMessages(type, store.game, data);
+      const gameMessages = getGameMessages(type, store, data);
 
       if (!gameMessages) {
         break;
@@ -87,7 +100,7 @@ function getMessages(
       const dataWithRandomPosition = { ...data, ...getRandomPosition() };
       const gameMessages = getGameMessages(
         type,
-        store.game,
+        store,
         dataWithRandomPosition
       ) as any;
 

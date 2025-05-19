@@ -25,7 +25,7 @@ export function getRegMessage(
   const existingPlayer = db.findOne({ name: nameInput });
 
   if (!existingPlayer) {
-    const newPlayer = db.create(data);
+    const newPlayer = db.create({ ...data, wins: 0 });
     result.name = newPlayer.name;
     result.index = newPlayer.id;
   }
