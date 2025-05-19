@@ -89,3 +89,9 @@ export interface Store {
   rooms: Database<Room>;
   game: Database<Game>;
 }
+
+export interface AttackResult {
+  position: Position;
+  currentPlayer: string | number;
+  status: AttackStatus;
+}

@@ -1,7 +1,7 @@
 import { styleText } from 'node:util';
 import { WebSocketServer } from 'ws';
-import { handleMessage } from './handlers/messageRouter';
-import { MyWebSocket, WebsocketMessage } from '../utils/types';
+import { routeMessages } from './messageHandlers/routeMessages';
+import { MyWebSocket } from '../utils/types';
 
 const connectedClients: WebSocket[] | MyWebSocket[] = [];
 
@@ -18,7 +18,7 @@ export function runWebsocket() {
       const incomingMessage = JSON.parse(rawMessage.toString());
       console.log(styleText(['yellow'], `Received: ${rawMessage}`));
 
-      handleMessage({
+      routeMessages({
         incomingMessage,
         client: socket as any,
         allClients: connectedClients,

@@ -7,7 +7,7 @@ import {
   WebsocketCommandType,
 } from '../../utils/types';
 
-export function getRoomMessage({
+export function getRoomMessages({
   type,
   store,
   socket,
