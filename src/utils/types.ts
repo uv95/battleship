@@ -1,3 +1,5 @@
+import Database from '../db/db';
+
 export enum WebsocketCommandType {
   REG = 'reg',
   UPDATE_WINNERS = 'update_winners',
@@ -80,4 +82,10 @@ export interface WebsocketMessage {
   type: WebsocketCommandType;
   data: any;
   id: 0;
+}
+
+export interface Store {
+  players: Database<Player>;
+  rooms: Database<Room>;
+  game: Database<Game>;
 }

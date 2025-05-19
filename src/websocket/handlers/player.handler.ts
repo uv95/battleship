@@ -1,7 +1,17 @@
 import Database from '../../db/db';
-import { Player, RoomPlayer } from '../../utils/types';
+import { formMessage } from '../../utils/formMessage';
+import {
+  MyWebSocket,
+  Player,
+  RoomPlayer,
+  WebsocketCommandType,
+} from '../../utils/types';
 
-export function handlePlayers(db: Database<Player>, data: Omit<Player, 'id'>) {
+export function getRegMessage(
+  db: Database<Player>,
+  data: Omit<Player, 'id'>,
+  socket: MyWebSocket
+) {
   const result: {
     error: Boolean;
     errorText: string;
@@ -18,17 +28,19 @@ export function handlePlayers(db: Database<Player>, data: Omit<Player, 'id'>) {
     const newPlayer = db.create(data);
     result.name = newPlayer.name;
     result.index = newPlayer.id;
-
-    return result;
   }
 
-  if (existingPlayer.password !== passwordInput) {
-    result.error = true;
-    result.errorText = 'Password is incorrect!';
-  } else {
-    result.name = existingPlayer.name;
-    result.index = existingPlayer.id;
+  if (existingPlayer) {
+    if (existingPlayer.password !== passwordInput) {
+      result.error = true;
+      result.errorText = 'Password is incorrect!';
+    } else {
+      result.name = existingPlayer.name;
+      result.index = existingPlayer.id;
+    }
   }
 
-  return result;
+  socket.playerId = result.index;
+
+  return formMessage(WebsocketCommandType.REG, result);
 }

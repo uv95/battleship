@@ -11,10 +11,17 @@ import {
   WebsocketCommandType,
   WebsocketMessage,
   Ship,
+  Store,
 } from '../../utils/types';
 import { handleGame } from './game.handler';
-import { handlePlayers } from './player.handler';
-import { handleRooms } from './room.handler';
+import { getRegMessage } from './player.handler';
+import { getRoomMessage } from './room.handler';
+
+const store: Store = {
+  players: new Database<Player>(),
+  rooms: new Database<Room>(),
+  game: new Database<Game>(),
+};
 
 const players = new Database<Player>();
 const rooms = new Database<Room>();
@@ -29,69 +36,28 @@ function getMessages(
 
   switch (type) {
     case WebsocketCommandType.REG: {
-      const player = handlePlayers(players, data);
-      socket.playerId = player.index;
-
-      messages.push(
-        formMessage(type, player),
-        formMessage(WebsocketCommandType.UPDATE_ROOM, handleRooms(type, rooms))
-      );
+      const regMessage = getRegMessage(store.players, data, socket);
+      const roomMessage = getRoomMessage({ type, store });
+      messages.push(regMessage, roomMessage);
 
       break;
     }
 
     case WebsocketCommandType.CREATE_ROOM: {
-      messages.push(
-        formMessage(WebsocketCommandType.UPDATE_ROOM, handleRooms(type, rooms))
-      );
+      const roomMessage = getRoomMessage({ type, store });
+      messages.push(roomMessage);
 
       break;
     }
 
     case WebsocketCommandType.ADD_USER_TO_ROOM: {
-      const player = players.findById(socket.playerId);
+      const roomMessages = getRoomMessage({ type, store, socket, data });
 
-      if (!player) {
-        break;
+      if (Array.isArray(roomMessages)) {
+        messages.push(...roomMessages);
+      } else {
+        messages.push(roomMessages);
       }
-
-      const roomId = data.indexRoom;
-      const room = rooms.findById(roomId);
-
-      if (!room) {
-        break;
-      }
-
-      if (isRoomReadyForGame(room.players, socket.playerId)) {
-        const allPlayerIds = [room.players[0].index, socket.playerId];
-        const newGame = game.create({
-          players: allPlayerIds.map((playerId: string | number) => ({
-            playerId,
-            ships: [],
-          })),
-          firstPlayerId: '',
-        });
-
-        messages.push(
-          formMessage(
-            WebsocketCommandType.CREATE_GAME,
-            allPlayerIds.map((playerId) => ({
-              idGame: newGame.id,
-              idPlayer: playerId,
-            }))
-          )
-        );
-      }
-
-      messages.push(
-        formMessage(
-          WebsocketCommandType.UPDATE_ROOM,
-          handleRooms(type, rooms, roomId, {
-            name: player.name,
-            index: player.id,
-          })
-        )
-      );
 
       break;
     }

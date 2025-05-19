@@ -1,52 +1,96 @@
 import Database from '../../db/db';
-import { Room, RoomPlayer, WebsocketCommandType } from '../../utils/types';
+import { formMessage } from '../../utils/formMessage';
+import {
+  MyWebSocket,
+  Room,
+  Store,
+  WebsocketCommandType,
+} from '../../utils/types';
 
-export function handleRooms(
+export function getRoomMessage({
+  type,
+  store,
+  socket,
+  data,
+}: {
   type:
     | WebsocketCommandType.REG
     | WebsocketCommandType.ADD_USER_TO_ROOM
-    | WebsocketCommandType.CREATE_ROOM,
-  db: Database<Room>,
-  id?: string | number,
-  player?: RoomPlayer
-) {
-  switch (type) {
-    case WebsocketCommandType.ADD_USER_TO_ROOM: {
-      if (id && player) {
-        const { players } = db.findById(id) as Room;
-        const isPlayerInTheRoom = players.some((p) => p.index === player.index);
-        const isRoomReadyForGame = !isPlayerInTheRoom && players.length;
+    | WebsocketCommandType.CREATE_ROOM;
+  store: Store;
+  socket?: MyWebSocket;
+  data?: any;
+}) {
+  const { players, rooms, game } = store;
 
-        if (isPlayerInTheRoom) {
-          return getRooms();
-        }
-        if (isRoomReadyForGame) {
-          db.deleteOne(id);
+  if (type === WebsocketCommandType.CREATE_ROOM) {
+    rooms.create({ players: [] });
+  }
 
-          return [];
-        }
+  if (type === WebsocketCommandType.ADD_USER_TO_ROOM) {
+    if (!socket) {
+      return;
+    }
 
-        const updatedPlayes = [...players, player];
-        db.updateOne(id, { players: updatedPlayes } as Partial<Room>);
+    const player = players.findById(socket.playerId);
+    const roomId = data.indexRoom;
+
+    if (player) {
+      const room = rooms.findById(roomId) as Room;
+      const isPlayerInTheRoom = room.players.some((p) => p.index === player.id);
+      const isRoomReadyForGame = !isPlayerInTheRoom && room.players.length;
+
+      if (isPlayerInTheRoom) {
+        return formMessage(WebsocketCommandType.UPDATE_ROOM, getRooms(rooms));
       }
 
-      break;
-    }
+      if (isRoomReadyForGame) {
+        rooms.deleteOne(roomId);
 
-    case WebsocketCommandType.CREATE_ROOM: {
-      db.create({ players: [] });
-      break;
+        const allPlayerIds = [room.players[0].index, socket.playerId];
+        const newGame = game.create({
+          players: allPlayerIds.map((playerId: string | number) => ({
+            playerId,
+            ships: [],
+          })),
+          firstPlayerId: '',
+        });
+        const newGameData = allPlayerIds.map((playerId) => ({
+          idGame: newGame.id,
+          idPlayer: playerId,
+        }));
+
+        const createGameMessage = formMessage(
+          WebsocketCommandType.CREATE_GAME,
+          newGameData
+        );
+        const updateRoomMessage = formMessage(
+          WebsocketCommandType.UPDATE_ROOM,
+          []
+        );
+
+        return [createGameMessage, updateRoomMessage];
+      }
+
+      const updatedPlayers = [
+        ...room.players,
+        {
+          name: player.name,
+          index: player.id,
+        },
+      ];
+      rooms.updateOne(roomId, { players: updatedPlayers } as Partial<Room>);
     }
   }
 
-  return getRooms();
+  return formMessage(WebsocketCommandType.UPDATE_ROOM, getRooms(rooms));
+}
 
-  function getRooms() {
-    const rooms = db.getAll();
+function getRooms(db: Database<Room>) {
+  const rooms = db.getAll();
 
-    return rooms.map((room) => ({
-      roomId: room.id,
-      roomUsers: room.players,
-    }));
-  }
+  return rooms.map((room) => ({
+    roomId: room.id,
+    roomUsers: room.players,
+  }));
 }
